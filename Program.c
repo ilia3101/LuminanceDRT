@@ -41,56 +41,7 @@ double do_contrast(double X, double Power, double Scale);
 float compress_value(float x, float power);
 
 /* Finds a constant hue rib along the gamut's top surface. */
-void find_RGB_hull_rib(double * XYZ_to_RGB, double * RGB_to_XYZ, float * EndRGB, int NumPoints, ColourPath_t * RibOut)
-{
-    /* Convert to perceptual space. Yeah too many lines of code. */
-    float white_XYZ[3] = {1,1,1};
-    float end_XYZ[3] = {EndRGB[0], EndRGB[1], EndRGB[2]};
-    applyMatrix_f(white_XYZ, RGB_to_XYZ);
-    applyMatrix_f(end_XYZ, RGB_to_XYZ);
-    float white_CAM[3];     /* Perceptual coordinate of white */
-    float end_CAM[3];       /* Perceptual coordinate of the end point */
-    XYZ_to_IPT(white_XYZ, white_CAM, 1);
-    XYZ_to_IPT(end_XYZ, end_CAM, 1);
-
-    for (int i = 0; i < NumPoints; ++i)
-    {
-        float progress = ((float)i) / (NumPoints-1.0f);
-
-        /* Interpolate between the white point and the colour point in perceptual space... */
-        float result[3];
-        for (int j = 0; j < 3; ++j)
-        {
-            result[j] = white_CAM[j] * progress + end_CAM[j] * (1.0f - progress);
-        }
-
-        /* Convert back to RGB... */
-        IPT_to_XYZ(result, result, 1);
-        applyMatrix_f(result, XYZ_to_RGB);
-
-        /* Normalise so maxRGB = 1, this places te point on the hull's 'canopy' (maximum output brightness) */
-        float max_rgb = MAX(result[0], MAX(result[1], result[2]));
-        for (int j = 0; j < 3; ++j)
-        {
-            /* Normalise */
-            result[j] /= max_rgb;
-    
-            /* Because some colours (THE REC709 BLUE PRIMARY) curve so strongly in perceptual space,
-             * there is no straight line to white, so I clip negative channels to bring the path
-             * back on to the edge of the gamut. In this case clipping is fine because
-             * distances and precision don't matter, the path just needs to be brought to the
-             * edge and will be interpolated on later. */
-            if (result[j] < 0.0) result[j] = 0.0;
-        }
-
-        /* Convert back to perceptual space */
-        applyMatrix_f(result, RGB_to_XYZ);
-        XYZ_to_IPT(result, result, 1);
-
-        /* Output the point to the colour path. */
-        ColourPathAddPointByValue(RibOut, result);
-    }
-}
+void find_RGB_hull_rib(double * XYZ_to_RGB, double * RGB_to_XYZ, float * EndRGB, int NumPoints, ColourPath_t * RibOut);
 
 
 /* The 'paths' LUT is an exposure invariant (2D) LUT to find the 'path to white'
@@ -109,7 +60,7 @@ int main(int argc, char ** argv)
 {
     /* Main parameters that control everything */
     float compression_smoothness = 1.05; /* 1 = smoothest, higher values are sharper */
-    float contrast_slope = 1.5;
+    float contrast_slope = 1.7;
     float saturation_factor = 1.0 * sqrt(contrast_slope);
 
     /* Rec709 will be our RGB space */
@@ -334,13 +285,11 @@ ____ ____ _  _ ____ ____ ___ _ ____ _  _
 }
 
 
-/* Implementation of not so relevant functions... */
-
+/* Compression method like Reinhard but with power */
 float compress(float x)
 {
     return (x / (1.0+x));
 }
-
 float compress_value(float x, float power)
 {
     if (x < 0) return x;
@@ -374,4 +323,55 @@ double _do_power_contrast(double x, double power, double pivot){
     return contrast_scaled((X) - (contrast_scaled(1.0, Power, Scale) / Power) + (1.0 / Power), Power, Scale);
 } double do_contrast(double X, double Power, double Scale){
     return do_contrast_about1(X/middle_grey, Power, Scale) * middle_grey;
+}
+
+void find_RGB_hull_rib(double * XYZ_to_RGB, double * RGB_to_XYZ, float * EndRGB, int NumPoints, ColourPath_t * RibOut)
+{
+    /* Convert to perceptual space. Yeah too many lines of code. */
+    float white_XYZ[3] = {1,1,1};
+    float end_XYZ[3] = {EndRGB[0], EndRGB[1], EndRGB[2]};
+    applyMatrix_f(white_XYZ, RGB_to_XYZ);
+    applyMatrix_f(end_XYZ, RGB_to_XYZ);
+    float white_CAM[3];     /* Perceptual coordinate of white */
+    float end_CAM[3];       /* Perceptual coordinate of the end point */
+    XYZ_to_IPT(white_XYZ, white_CAM, 1);
+    XYZ_to_IPT(end_XYZ, end_CAM, 1);
+
+    for (int i = 0; i < NumPoints; ++i)
+    {
+        float progress = ((float)i) / (NumPoints-1.0f);
+
+        /* Interpolate between the white point and the colour point in perceptual space... */
+        float result[3];
+        for (int j = 0; j < 3; ++j)
+        {
+            result[j] = white_CAM[j] * progress + end_CAM[j] * (1.0f - progress);
+        }
+
+        /* Convert back to RGB... */
+        IPT_to_XYZ(result, result, 1);
+        applyMatrix_f(result, XYZ_to_RGB);
+
+        /* Normalise so maxRGB = 1, this places te point on the hull's 'canopy' (maximum output brightness) */
+        float max_rgb = MAX(result[0], MAX(result[1], result[2]));
+        for (int j = 0; j < 3; ++j)
+        {
+            /* Normalise */
+            result[j] /= max_rgb;
+    
+            /* Because some colours (THE REC709 BLUE PRIMARY) curve so strongly in perceptual space,
+             * there is no straight line to white, so I clip negative channels to bring the path
+             * back on to the edge of the gamut. In this case clipping is fine because
+             * distances and precision don't matter, the path just needs to be brought to the
+             * edge and will be interpolated on later. */
+            if (result[j] < 0.0) result[j] = 0.0;
+        }
+
+        /* Convert back to perceptual space */
+        applyMatrix_f(result, RGB_to_XYZ);
+        XYZ_to_IPT(result, result, 1);
+
+        /* Output the point to the colour path. */
+        ColourPathAddPointByValue(RibOut, result);
+    }
 }
