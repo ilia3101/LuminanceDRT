@@ -1,5 +1,5 @@
 # LuminanceDRT
-Simple luminance based image formation algorithm with hue linearity (using IPT) and smooth tonality. Renders good looking images from linear ("scene referred") data without clipping or producing out of gamut values.
+Simple luminance based image formation algorithm with hue linearity (using IPT), and smooth tonality. Renders good looking images from linear ("scene referred") data without clipping or producing out of gamut values.
 
 The process consists of these steps:
 1. Slope contrast in IPT, as this compensates Hunt and Abney effect for free, unlike doing it on linear luminance
