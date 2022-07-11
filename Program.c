@@ -62,7 +62,7 @@ static float reinhard(float x, float power)
 
 
 
-/* Finds a constant hue rib along the gamut's top surface. I use umbrella terminology. */
+/* Finds a constant hue rib along the gamut's top surface. */
 void find_RGB_hull_rib(double * XYZ_to_RGB, double * RGB_to_XYZ, float * EndRGB, int NumPoints, ColourPath_t * RibOut)
 {
     /* Convert to perceptual space. Yeah too many lines of code. */
@@ -266,7 +266,7 @@ int main(int argc, char ** argv)
     // }
 
     /********* Red XMAS EXR ********/
-    float EXPOsure = 0.769;
+    float EXPOsure = 0.8;
     uint64_t file_size = 0;
     image_width = 1920;
     image_height = 1080;
