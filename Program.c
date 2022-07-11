@@ -7,60 +7,20 @@ This is the main program that does the image formation
 #include <math.h>
 #include <unistd.h>
 
-
 #include "Matrix.h"
 #include "ColourPath.h"
 #include "IPT.h"
 #include "Utilities/Utilities.h"
 
-
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
+/* Functions used by the code */
+double do_contrast(double X, double Power, double Scale);
 
-
-#define MIDDLE_GREY 0.18
-#define middle_grey (MIDDLE_GREY)
-#define linear_start (MIDDLE_GREY/3.5)
-static double _do_power_contrast(double x, double power, double pivot){
-    x /= pivot;
-    if (x < 1.0) x = pow(x, power);
-    else {
-        x = (x-1.0) * power + 1.0;
-    }
-    x *= pivot;
-    return x;
-}static double do_power_contrast(double x, double power){
-    x = _do_power_contrast(x, power, linear_start);
-    x /= _do_power_contrast(middle_grey, power, linear_start);
-    x *= middle_grey;
-    return x;
-}static double contrast_base(double X, double Power){
-    if (X < 0.0) return 0;
-    if (X < 1.0) return pow(X, Power);
-    else return (X-1.0) * Power + 1.0;
-}static double contrast_scaled(double X, double Power, double Scale){
-    return contrast_base(X * Scale, Power) / Scale;
-}static double do_contrast_about1(double X, double Power, double Scale){
-    return contrast_scaled((X) - (contrast_scaled(1.0, Power, Scale) / Power) + (1.0 / Power), Power, Scale);
-}static double do_contrast(double X, double Power, double Scale){
-    return do_contrast_about1(X/middle_grey, Power, Scale) * middle_grey;
-}
-
-
-
-
-static float reinhardb(float x)
-{
-    return (x / (1.0+x));
-}
-static float reinhard(float x, float power)
-{
-    if (x < 0) return x;
-    return powf(reinhardb(pow(x, power)), 1.0f/power);
-}
-
-
+/* Compresses a value from 0-infinity to 0-1
+ * Passing 1 to power = very smooth, higher values = sharper roll off */
+float compress_value(float x, float power);
 
 /* Finds a constant hue rib along the gamut's top surface. */
 void find_RGB_hull_rib(double * XYZ_to_RGB, double * RGB_to_XYZ, float * EndRGB, int NumPoints, ColourPath_t * RibOut)
@@ -129,6 +89,11 @@ ColourPath_t paths[LUT_RESOLUTION][LUT_RESOLUTION];
 
 int main(int argc, char ** argv)
 {
+    /* Main parameters that control everything */
+    float compression_smoothness = 1.05; /* 1 = smoothest, higher values are sharper */
+    float contrast_slope = 1.5;
+    float saturation_factor = 1.0 * sqrt(contrast_slope);
+
     /* Rec709 will be our RGB space */
     double RGB_to_XYZ[9] = {
         0.4124564, 0.3575761, 0.1804375,
@@ -152,7 +117,6 @@ int main(int argc, char ** argv)
     //     if (saturation > saturation_boundary) saturation_boundary = saturation_boundary;
     // }
     // saturation_boundary *= 1.1;
-
 
 
     /***********************************************************/
@@ -274,7 +238,6 @@ int main(int argc, char ** argv)
     uint8_t * file_data = Util_OpenFileToMemory(argv[1], 1000, &file_size);
     float * image_data = (float *)(file_data + (file_size - imgdata_size));
 
-    printf("FILE SIZE = %i, DATA_SIZE = %i\n", file_size, imgdata_size);
     colour_image = malloc(image_height*image_width*sizeof(float)*3);
 
     for (int y = 0; y < image_height; ++y)
@@ -304,10 +267,6 @@ ____ ____ _  _ ____ ____ ___ _ ____ _  _
 
 */
 
-    float compression_smoothness = 1.05; /* 1 = smoothest, higher values are sharper */
-    float contrast_slope = 1.4;
-    float saturation_factor = 1.0 * sqrt(contrast_slope);
-
     for (int p = 0; p < (image_height*image_width*3); p+=3)
     {
         float * pix = colour_image + p;
@@ -324,7 +283,7 @@ ____ ____ _  _ ____ ____ ___ _ ____ _  _
         IPT_to_XYZ(pix, pix, 1);
 
         /* Grab the luminance */
-        float Y = pix[1] / (1.0 + pix[1]);
+        float Y = compress_value(pix[1], compression_smoothness);
         applyMatrix_f(pix, XYZ_to_RGB);
 
         /* Clip negative channels, as footprint compression. This is a todo. */
@@ -356,4 +315,47 @@ ____ ____ _  _ ____ ____ ___ _ ____ _  _
     Util_WriteBitmap(bmp, image_width, image_height, "sweep_bad.bmp", 0);
 
     return 0;
+}
+
+
+/* Implementation of not so relevant functions... */
+
+float compress(float x)
+{
+    return (x / (1.0+x));
+}
+
+float compress_value(float x, float power)
+{
+    if (x < 0) return x;
+    return powf(compress(pow(x, power)), 1.0f/power);
+}
+
+/* I don't remember what all this "contrast" code does, but it definitely does do a sloped contrast */
+#define MIDDLE_GREY 0.18
+#define middle_grey (MIDDLE_GREY)
+#define linear_start (MIDDLE_GREY/3.5)
+double _do_power_contrast(double x, double power, double pivot){
+    x /= pivot;
+    if (x < 1.0) x = pow(x, power);
+    else {
+        x = (x-1.0) * power + 1.0;
+    }
+    x *= pivot;
+    return x;
+}double do_power_contrast(double x, double power){
+    x = _do_power_contrast(x, power, linear_start);
+    x /= _do_power_contrast(middle_grey, power, linear_start);
+    x *= middle_grey;
+    return x;
+}double contrast_base(double X, double Power){
+    if (X < 0.0) return 0;
+    if (X < 1.0) return pow(X, Power);
+    else return (X-1.0) * Power + 1.0;
+}double contrast_scaled(double X, double Power, double Scale){
+    return contrast_base(X * Scale, Power) / Scale;
+}double do_contrast_about1(double X, double Power, double Scale){
+    return contrast_scaled((X) - (contrast_scaled(1.0, Power, Scale) / Power) + (1.0 / Power), Power, Scale);
+} double do_contrast(double X, double Power, double Scale){
+    return do_contrast_about1(X/middle_grey, Power, Scale) * middle_grey;
 }
