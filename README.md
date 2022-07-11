@@ -1,7 +1,11 @@
 # LuminanceDRT
-Simple luminance based image formation algorithm with hue linearity and smooth tonality. Renders good looking images from linear ("scene referred") data without clipping or producing out of gamut values.
+Simple luminance based image formation algorithm with hue linearity (using IPT) and smooth tonality. Renders good looking images from linear ("scene referred") data without clipping or producing out of gamut values.
 
-Does not do footprint compression.
+The process consists of these steps:
+1. Slope contrast in IPT, as this compensates Hunt and Abney effect for free, unlike doing it on linear luminance
+2. `Insert footprint compression here` (I simply clip negative channels)
+3. Luminance is compressed from (0,∞) to (0,1) using a variation of the `x / (x + 1)` formula, basically the Reinhard procedure
+4. Use chromaticity and (0,1) luminance to index a LUT of precalculated "paths to white", which outputs the final RGB value. Most of the code is precalculating these paths with hue linearity and rounded cornders for smoothness.
 
 Code is work in progress. Assumes rec709 while I figure out if EXR has colour space metadata.
 
