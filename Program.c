@@ -323,14 +323,12 @@ ____ ____ _  _ ____ ____ ___ _ ____ _  _
     uint8_t * bmp = malloc(image_height*image_width*3);
     for (int p = 0; p < (image_height*image_width*3); p += 3)
     {
-        // Util_DesaturateRGB(colour_image[p], colour_image[p+1], colour_image[p+2], colour_image+p, NULL);
-        // colour_image[p] = colour_image[p] / (1.0 + colour_image[p]);
-        bmp[ p ] = linear_to_sRGB(colour_image[ p ]*1.00001);
+        bmp[ p ] = linear_to_sRGB(colour_image[ p ]*1.00001); /* The tiny multiplier makes values able to reach RGB 255 */
         bmp[p+1] = linear_to_sRGB(colour_image[p+1]*1.00001);
         bmp[p+2] = linear_to_sRGB(colour_image[p+2]*1.00001);
     }
 
-    Util_WriteBitmap(bmp, image_width, image_height, "sweep_bad.bmp", 0);
+    Util_WriteBitmap(bmp, image_width, image_height, "result.bmp", 0);
 
     return 0;
 }
