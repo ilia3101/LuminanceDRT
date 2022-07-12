@@ -67,6 +67,7 @@ int main(int argc, char ** argv)
     float compression_smoothness = 1.05; /* 1 = smoothest, higher values are sharper */
     float exposure_factor = pow(2.0, atof(argv[7]));
     float corner_smoothness = atof(argv[6]);
+    char * out_path = argv[8];
 
     /* Apply exposure */
     for (int i = 0; i < 3*image_height*image_width; ++i) {
@@ -243,7 +244,7 @@ ____ ____ _  _ ____ ____ ___ _ ____ _  _
         bmp[p+2] = linear_to_sRGB(colour_image[p+2]*1.00001);
     }
 
-    Util_WriteBitmap(bmp, image_width, image_height, "result.bmp", 0);
+    Util_WriteBitmap(bmp, image_width, image_height, out_path, 0);
 
     return 0;
 }

@@ -11,6 +11,7 @@ exposure = 0.0
 slope = 1.7
 smoothness = 0.4
 saturation = 1.0
+out_path = "result.bmp"
 
 # Construct the argument parser
 ap = argparse.ArgumentParser()
@@ -23,6 +24,8 @@ ap.add_argument("--smoothness", type=float, required=False,
    help="How much to round the corners of the gamut volume (smoothness), from 0-1, default value is " + str(smoothness))
 ap.add_argument("--saturation", type=float, required=False,
    help="Saturation factor, default is " + str(saturation))
+ap.add_argument("--output", type=str, required=False,
+   help="Specif output path/filename, ending in .bmp")
 ap.add_argument("--file", type=str, required=True,
    help="Path to an EXR file")
 args = vars(ap.parse_args())
@@ -36,6 +39,7 @@ if (args['saturation']): saturation = args['saturation']
 if (args['slope']): slope = args['slope']
 if (args['smoothness']): smoothness = args['smoothness']
 if (args['exposure']): exposure = args['exposure']
+if (args['output']): out_path = args['output']
 
 print("smoothness = " + str(smoothness))
 print("slope = " + str(slope))
@@ -81,6 +85,7 @@ os.system("./process_data binary_data " + str(image_width)
                                         + " " + str(saturation)
                                         + " " + str(slope)
                                         + " " + str(smoothness)
-                                        + " " + str(exposure))
+                                        + " " + str(exposure)
+                                        + " " + str(out_path))
 
 os.remove("binary_data")
