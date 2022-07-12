@@ -14,10 +14,27 @@ Code is work in progress. Assumes rec709 while I figure out if EXR has colour sp
 At least for now, you'll need to be on Linux or macOS, or figure out how to compile C on Windows yourself.
 
 1. Compile (you'll need to have gcc/clang installed):
-`./build.sh`
-
+```
+./build.sh
+```
 2. Run:
-`python3 Process_EXR /path/to/your.exr`
+```
+python3 Process_EXR.py --file /path/to/your.exr
+```
+Help:
+```
+usage: Process_EXR.py [-h] [--exposure EXPOSURE] [--slope SLOPE] [--smoothness SMOOTHNESS] [--saturation SATURATION] --file FILE
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --exposure EXPOSURE   Exposure correction in stops
+  --slope SLOPE         Contrast slope (steepness), default is 1.7
+  --smoothness SMOOTHNESS
+                        How much to round the corners of the gamut volume (smoothness), from 0-1, default value is 0.4
+  --saturation SATURATION
+                        Saturation factor, default is 1.0
+  --file FILE           Path to an EXR file
+```
 
 ## Examples
 
