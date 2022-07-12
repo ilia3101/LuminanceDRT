@@ -23,7 +23,7 @@ ap.add_argument("--smoothness", type=float, required=False,
    help="How much to round the corners of the gamut volume (smoothness), from 0-1, default value is " + str(smoothness))
 ap.add_argument("--saturation", type=float, required=False,
    help="Saturation factor, default is " + str(saturation))
-ap.add_argument("--file", type=str, required=False,
+ap.add_argument("--file", type=str, required=True,
    help="Path to an EXR file")
 args = vars(ap.parse_args())
 # Calculate the sum
@@ -82,4 +82,5 @@ os.system("./process_data binary_data " + str(image_width)
                                         + " " + str(slope)
                                         + " " + str(smoothness)
                                         + " " + str(exposure))
-print("test")
+
+os.remove("binary_data")
