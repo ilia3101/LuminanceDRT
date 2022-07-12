@@ -58,10 +58,20 @@ ColourPath_t paths[LUT_RESOLUTION][LUT_RESOLUTION];
 
 int main(int argc, char ** argv)
 {
-    /* Main parameters that control everything */
+    /* Open the data */
+    float * colour_image = Util_OpenFileToMemory(argv[1], 1000000, NULL);
+    int image_width = atoi(argv[2]);
+    int image_height = atoi(argv[3]);
+    float contrast_slope = atof(argv[5]);
+    float saturation_factor = atof(argv[4]) * sqrt(contrast_slope);
     float compression_smoothness = 1.05; /* 1 = smoothest, higher values are sharper */
-    float contrast_slope = 1.7;
-    float saturation_factor = 1.0 * sqrt(contrast_slope);
+    float exposure_factor = pow(2.0, atof(argv[7]));
+    float corner_smoothness = atof(argv[6]);
+
+    /* Apply exposure */
+    for (int i = 0; i < 3*image_height*image_width; ++i) {
+        colour_image[i] *= exposure_factor;
+    }
 
     /* Rec709 will be our RGB space */
     double RGB_to_XYZ[9] = {
@@ -126,7 +136,7 @@ int main(int argc, char ** argv)
             ColourPathAddPoint(path_final, (ColourPathPoint_t){.distance = 0, .value = {0,0,0}});
 
             int bevel_resolution = 20; /* How many points the rounded section will have */
-            float bevel_scale = 0.4;
+            float bevel_scale = corner_smoothness;
             float bevel_mid = ColourPathGetDistanceOfPoint(&path, 1);
             float bevel_start = bevel_mid * (1.0-bevel_scale);
             float bevel_end = bevel_mid + (bevel_mid - bevel_start);
@@ -176,12 +186,6 @@ int main(int argc, char ** argv)
             }
         }
     }
-
-
-    /* Open the image data */
-    float * colour_image = Util_OpenFileToMemory(argv[1], 1000000, NULL);
-    int image_width = atoi(argv[2]);
-    int image_height = atoi(argv[3]);
 
 
 /*
