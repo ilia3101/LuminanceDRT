@@ -204,6 +204,10 @@ ____ ____ _  _ ____ ____ ___ _ ____ _  _
     for (int p = 0; p < (image_height*image_width*3); p+=3)
     {
         float * pix = colour_image + p;
+
+        /* Unfortunately, I must do this due to negative blue luminance */
+        for (int c = 0; c < 3; ++c) if (pix[c] < 0.0) pix[c] = 0.0;
+
         applyMatrix_f(pix, RGB_to_XYZ);
         XYZ_to_IPT(pix, pix, 1);
 
