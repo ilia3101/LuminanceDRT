@@ -25,7 +25,7 @@ ap.add_argument("--smoothness", type=float, required=False,
 ap.add_argument("--saturation", type=float, required=False,
    help="Saturation factor, default is " + str(saturation))
 ap.add_argument("--output", type=str, required=False,
-   help="Specif output path/filename, ending in .bmp")
+   help="Specify output path/filename, ending in .bmp")
 ap.add_argument("--file", type=str, required=True,
    help="Path to an EXR file")
 args = vars(ap.parse_args())
