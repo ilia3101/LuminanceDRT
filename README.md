@@ -36,6 +36,12 @@ optional arguments:
   --file FILE           Path to an EXR file
 ```
 
+## Issues
+
+Assumes all input EXRs are rec709, and outputs with rec709 primaries.
+
+Negative luminance values caused by 3x3 matrices may cause black spots in the image. 
+
 ## Examples
 
 Does a decent job with bright colours. All were processed with slope 1.7
