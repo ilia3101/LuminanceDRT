@@ -72,7 +72,6 @@ int main(int argc, char ** argv)
     double XYZ_to_RGB[9];
     invertMatrix(RGB_to_XYZ, XYZ_to_RGB);
 
-
     /* For a basic footprint compression. This is a TODO. */
     // float saturation_boundary = 0.0;
     // for (int p = 0; p < 3; ++p) {
@@ -179,49 +178,10 @@ int main(int argc, char ** argv)
     }
 
 
-
-    /* Generate sweep */
-
-    int image_width = 1000;
-    int image_height = 481;
-    float * colour_image = malloc(image_height*image_width*3*sizeof(float));
-    float sweep_min_stops = -5;
-    float sweep_max_stops = 12;
-
-    /********** SWEEP **********/
-    // for (int y = 0; y < image_height; ++y) {
-    //     float hue = ((double)y) / (image_height - 1.0);
-    //     for (int x = 0; x < image_width; ++x) {
-    //         float * pix = colour_image + (y*image_width+x)*3;
-    //         float exposure_stops = (((float)x)/(image_width-1.0f)) * (sweep_max_stops - sweep_min_stops) + sweep_min_stops;
-    //         Util_HSVToRGB(hue*1/* .333333 */, 1.0, powf(2.0, exposure_stops), pix);
-    //     }
-    // }
-
-    /********* Red XMAS EXR ********/
-    float EXPOsure = 0.8;
-    uint64_t file_size = 0;
-    image_width = 1920;
-    image_height = 1080;
-    uint64_t imgdata_size = image_width * image_height * sizeof(float) * 4;
-    uint8_t * file_data = Util_OpenFileToMemory(argv[1], 1000, &file_size);
-    float * image_data = (float *)(file_data + (file_size - imgdata_size));
-
-    colour_image = malloc(image_height*image_width*sizeof(float)*3);
-
-    for (int y = 0; y < image_height; ++y)
-    {
-        for (int x = 0; x < image_width; ++x)
-        {
-            int i = y * (image_width) + x;
-            int i2 = y * (image_width*4+2) + (x-236);
-            int i3 = y * (image_width*4+2) + (x-236) + 1920;
-            int i4 = y * (image_width*4+2) + (x-236) + 3840;
-            colour_image[i*3] = image_data[i4] * EXPOsure;
-            colour_image[i*3+1] = image_data[i3] * EXPOsure;
-            colour_image[i*3+2] = image_data[i2] * EXPOsure;
-        }
-    }
+    /* Open the image data */
+    float * colour_image = Util_OpenFileToMemory(argv[1], 1000000, NULL);
+    int image_width = atoi(argv[2]);
+    int image_height = atoi(argv[3]);
 
 
 /*
