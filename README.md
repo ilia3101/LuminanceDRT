@@ -20,9 +20,9 @@ At least for now, you'll need to be on Linux or macOS, or figure out how to comp
 ```
 python3 Process_EXR.py --file /path/to/your.exr
 ```
-Help:
+Options:
 ```
-usage: Process_EXR.py [-h] [--exposure EXPOSURE] [--slope SLOPE] [--smoothness SMOOTHNESS] [--saturation SATURATION] --file FILE
+usage: Process_EXR.py [-h] [--exposure EXPOSURE] [--slope SLOPE] [--smoothness SMOOTHNESS] [--saturation SATURATION] [--output OUTPUT] --file FILE
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -32,6 +32,7 @@ optional arguments:
                         How much to round the corners of the gamut volume (smoothness), from 0-1, default value is 0.4
   --saturation SATURATION
                         Saturation factor, default is 1.0
+  --output OUTPUT       Specify output path/filename, ending in .bmp
   --file FILE           Path to an EXR file
 ```
 
@@ -53,5 +54,8 @@ Lightsabers
 
 Skin tones
 ![skintone](https://user-images.githubusercontent.com/23642861/178276754-b6c0e136-8d0b-464e-b078-97b59ea6b04a.jpg)
+
+Blue bar
+![bluebar](https://user-images.githubusercontent.com/23642861/178523007-ddb9efc2-390a-4c8e-8e32-b7ff9e031fed.jpg)
 
 Test data from https://github.com/sobotka/Testing_Imagery
