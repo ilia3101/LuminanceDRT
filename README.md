@@ -9,6 +9,15 @@ The process consists of these steps:
 
 Code is work in progress. Assumes rec709 while I figure out if EXR has colour space metadata.
 
+## Usage
+
+At least for now, you'll need to be on Linux or macOS, or figure out how to compile C on Windows yourself.
+
+1. Compile (you'll need to have gcc/clang installed):
+`./build.sh`
+
+2. Run:
+`python3 Process_EXR /path/to/your.exr`
 
 ## Examples
 
