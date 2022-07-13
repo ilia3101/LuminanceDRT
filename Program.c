@@ -52,7 +52,7 @@ void find_RGB_hull_rib(double * XYZ_to_RGB, double * RGB_to_XYZ, float * EndRGB,
  * 
  * (Resultion should be 3n+1 so that the whitepoint falls on an integer coordinate)
  */
-#define LUT_RESOLUTION 100
+#define LUT_RESOLUTION 31
 ColourPath_t paths[LUT_RESOLUTION][LUT_RESOLUTION];
 /* (I put it as a global variable cause it would cause instant stack overflows when it's too big) */
 
@@ -183,6 +183,10 @@ int main(int argc, char ** argv)
                 point->value[1] = XYZ[1];
                 point->value[2] = XYZ[2];
                 applyMatrix_f(point->value, XYZ_to_RGB);
+            // if (g == LUT_RESOLUTION-1 || r == LUT_RESOLUTION-1){
+            //     puts("HI !!!!!!");
+            //     printf("RGB = %f %f %f\n", point->value[0], point->value[1], point->value[2]);
+            // }
                 point->distance = XYZ[1];
             }
         }
@@ -205,7 +209,7 @@ ____ ____ _  _ ____ ____ ___ _ ____ _  _
     {
         float * pix = colour_image + p;
 
-        /* Unfortunately, I must do this due to negative blue luminance */
+        /* Unfortunately, I must do this due to negative blue  */
         for (int c = 0; c < 3; ++c) if (pix[c] < 0.0) pix[c] = 0.0;
 
         applyMatrix_f(pix, RGB_to_XYZ);
@@ -230,12 +234,28 @@ ____ ____ _  _ ____ ____ ___ _ ____ _  _
         /* Index the LUT */
         float sum = (pix[0] + pix[1] + pix[2]);
         if (sum == 0.0) sum = 1.0; /* Just to division by zero if it's a black pixel */
-        float r = pix[0] / sum;
-        float g = pix[1] / sum;
-        int ir = r * LUT_RESOLUTION * 0.99999;
-        int ig = g * LUT_RESOLUTION * 0.99999;
+        float r = pix[0] / sum * (LUT_RESOLUTION-1.0) * 0.999999; /* The 0.99999 is just to avoid going to the very edge of the LUT and breaking my interpolation. TODO: fix this. */
+        float g = pix[1] / sum * (LUT_RESOLUTION-1.0) * 0.999999;
+        int ir = r;
+        int ig = g;
 
-        ColourPathInterpolate(&paths[ir][ig], Y, pix);
+        /* Interpolate along four paths, then blend the resulting value... */
+
+        /* Weights */
+        float w_r = r - ir;
+        float w_g = g - ig;
+
+        float p01[3], p11[3], p00[3], p10[3];
+        ColourPathInterpolate(&paths[ir][ig], Y, p00);
+        ColourPathInterpolate(&paths[ir+1][ig], Y, p10);
+        ColourPathInterpolate(&paths[ir][ig+1], Y, p01);
+        ColourPathInterpolate(&paths[ir+1][ig+1], Y, p11);
+
+        for (int c = 0; c < 3; ++c)
+        {
+            pix[c] = (p00[c] * (1.0-w_g) + p01[c] * w_g) * (1.0-w_r)
+                   + (p10[c] * (1.0-w_g) + p11[c] * w_g) * w_r;
+        }
     }
 
 
