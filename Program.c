@@ -39,6 +39,7 @@ double do_contrast(double X, double Power, double Scale);
 /* Compresses a value from 0-infinity to 0-1
  * Passing 1 to power = very smooth, higher values = sharper roll off */
 float compress_value(float x, float power);
+float uncompress_value(float x, float power); /* Inverse */
 
 /* Finds a constant hue rib along the gamut's top surface. */
 void find_RGB_hull_rib(double * XYZ_to_RGB, double * RGB_to_XYZ, float * EndRGB, int NumPoints, ColourPath_t * RibOut);
@@ -56,6 +57,13 @@ void find_RGB_hull_rib(double * XYZ_to_RGB, double * RGB_to_XYZ, float * EndRGB,
 ColourPath_t paths[LUT_RESOLUTION][LUT_RESOLUTION];
 /* (I put it as a global variable cause it would cause instant stack overflows when it's too big) */
 
+
+#include <time.h>
+#define CREATE_TIMER(TName) clock_t start##TName, diff##TName; int msec##TName;
+#define START_TIMER(TName) start##TName = clock();
+#define END_TIMER(TName) diff##TName=clock()-start##TName;msec##TName=diff##TName*1000/CLOCKS_PER_SEC;
+#define GET_TIMER_RESULT(TName) (float)(msec##TName)
+
 int main(int argc, char ** argv)
 {
     /* Open the data */
@@ -63,7 +71,7 @@ int main(int argc, char ** argv)
     int image_width = atoi(argv[2]);
     int image_height = atoi(argv[3]);
     float contrast_slope = atof(argv[5]);
-    float saturation_factor = atof(argv[4]) * sqrt(contrast_slope);
+    float saturation_factor = atof(argv[4]) * cbrt(contrast_slope);
     float compression_smoothness = 1.05; /* 1 = smoothest, higher values are sharper */
     float exposure_factor = pow(2.0, atof(argv[7]));
     float corner_smoothness = atof(argv[6]);
@@ -83,19 +91,19 @@ int main(int argc, char ** argv)
     double XYZ_to_RGB[9];
     invertMatrix(RGB_to_XYZ, XYZ_to_RGB);
 
-    /* For a basic footprint compression. This is a TODO. */
-    // float saturation_boundary = 0.0;
-    // for (int p = 0; p < 3; ++p) {
-    //     float value[3];
-    //     Util_HSVToRGB(p / 3.0, 1.0, 1.0, value);
-    //     applyMatrix_f(value, RGB_to_XYZ);
-    //     XYZ_to_IPT(value, value, 1);
-    //     value[1] /= value[0];
-    //     value[2] /= value[0];
-    //     float saturation = sqrt(value[1]*value[1] + value[2]*value[2]);
-    //     if (saturation > saturation_boundary) saturation_boundary = saturation_boundary;
-    // }
-    // saturation_boundary *= 1.1;
+    /* Find the highest saturation distance of the gamut in IPT */
+    float highest_saturation = 0.0;
+    for (int p = 0; p < 3; ++p) {
+        float value[3];
+        Util_HSVToRGB(p / 3.0, 1.0, 1.0, value);
+        applyMatrix_f(value, RGB_to_XYZ);
+        XYZ_to_IPT(value, value, 1);
+        value[1] /= value[0];
+        value[2] /= value[0];
+        float saturation = sqrt(value[1]*value[1] + value[2]*value[2]);
+        if (saturation > highest_saturation) highest_saturation = saturation;
+    }
+    highest_saturation *= 1.03; /* A little safety margin */
 
 
     /***********************************************************/
@@ -183,10 +191,6 @@ int main(int argc, char ** argv)
                 point->value[1] = XYZ[1];
                 point->value[2] = XYZ[2];
                 applyMatrix_f(point->value, XYZ_to_RGB);
-            // if (g == LUT_RESOLUTION-1 || r == LUT_RESOLUTION-1){
-            //     puts("HI !!!!!!");
-            //     printf("RGB = %f %f %f\n", point->value[0], point->value[1], point->value[2]);
-            // }
                 point->distance = XYZ[1];
             }
         }
@@ -215,12 +219,30 @@ ____ ____ _  _ ____ ____ ___ _ ____ _  _
         applyMatrix_f(pix, RGB_to_XYZ);
         XYZ_to_IPT(pix, pix, 1);
 
+
+        /* Expand saturation from (very approximate) footprint boundry */
+        if (pix[0] < 0.0000000000001f) pix[0] = 0.0000000000001f; /* For safety */
+        pix[1] /= pix[0];
+        pix[2] /= pix[0];
+        float saturation_before = sqrt(pix[1]*pix[1] + pix[2]*pix[2]);
+        float saturation_expanded = uncompress_value(saturation_before / highest_saturation, 1.0) * highest_saturation;
+        pix[1] *= pix[0] * (saturation_expanded/saturation_before);
+        pix[2] *= pix[0] * (saturation_expanded/saturation_before);
+
         /* Do the slope contrast */
         pix[0] = IPT_curve(do_contrast(IPT_curve_inverse(pix[0]), contrast_slope, 1.0));
-
         /* Do saturation */
         pix[1] *= saturation_factor;
         pix[2] *= saturation_factor;
+
+        /* Contract saturation to footprint boundry */
+        pix[1] /= pix[0];
+        pix[2] /= pix[0];
+        saturation_expanded = sqrt(pix[1]*pix[1] + pix[2]*pix[2]);
+        float saturation_contracted = compress_value(saturation_expanded / highest_saturation, 1.0) * highest_saturation;
+        pix[1] *= pix[0] * (saturation_contracted/saturation_expanded);
+        pix[2] *= pix[0] * (saturation_contracted/saturation_expanded);
+
 
         IPT_to_XYZ(pix, pix, 1);
 
@@ -274,15 +296,40 @@ ____ ____ _  _ ____ ____ ___ _ ____ _  _
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* Compression method like Reinhard but with power */
 float compress(float x)
 {
-    return (x / (1.0+x));
+    return (x / (1.0 + x));
+}
+float uncompress(float x) /* Inverse */
+{
+    return -(x / (x - 1.0));
 }
 float compress_value(float x, float power)
 {
     if (x < 0) return x;
     return powf(compress(pow(x, power)), 1.0f/power);
+}
+float uncompress_value(float x, float power)
+{
+    if (x >= 1.0) return INFINITY;
+    if (x < 0) return x;
+    return powf(uncompress(pow(x, 1.0f/power)), power);
 }
 
 /* I don't remember what all this "contrast" code does, but it definitely does do a sloped contrast */
