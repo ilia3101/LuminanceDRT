@@ -71,7 +71,7 @@ int main(int argc, char ** argv)
     int image_width = atoi(argv[2]);
     int image_height = atoi(argv[3]);
     float contrast_slope = atof(argv[5]);
-    float saturation_factor = atof(argv[4]) * cbrt(contrast_slope);
+    float saturation_factor = atof(argv[4]) * sqrt(contrast_slope);
     float compression_smoothness = 1.05; /* 1 = smoothest, higher values are sharper */
     float exposure_factor = pow(2.0, atof(argv[7]));
     float corner_smoothness = atof(argv[6]);
@@ -221,13 +221,22 @@ ____ ____ _  _ ____ ____ ___ _ ____ _  _
 
 
         /* Expand saturation from (very approximate) footprint boundry */
-        if (pix[0] < 0.0000000000001f) pix[0] = 0.0000000000001f; /* For safety */
+        if (pix[0] < 0.0001f) pix[0] = 0.0001f; /* For safety */
         pix[1] /= pix[0];
         pix[2] /= pix[0];
         float saturation_before = sqrt(pix[1]*pix[1] + pix[2]*pix[2]);
-        float saturation_expanded = uncompress_value(saturation_before / highest_saturation, 1.0) * highest_saturation;
-        pix[1] *= pix[0] * (saturation_expanded/saturation_before);
-        pix[2] *= pix[0] * (saturation_expanded/saturation_before);
+        if (saturation_before >= 0.00001)
+        {
+            float saturation_expanded = uncompress_value(saturation_before / highest_saturation, 1.0) * highest_saturation;
+            pix[1] *= pix[0] * (saturation_expanded/saturation_before);
+            pix[2] *= pix[0] * (saturation_expanded/saturation_before);
+        }
+        else
+        {
+            pix[1] *= pix[0];
+            pix[2] *= pix[0];
+        }
+
 
         /* Do the slope contrast */
         pix[0] = IPT_curve(do_contrast(IPT_curve_inverse(pix[0]), contrast_slope, 1.0));
@@ -235,13 +244,17 @@ ____ ____ _  _ ____ ____ ___ _ ____ _  _
         pix[1] *= saturation_factor;
         pix[2] *= saturation_factor;
 
+
         /* Contract saturation to footprint boundry */
-        pix[1] /= pix[0];
-        pix[2] /= pix[0];
-        saturation_expanded = sqrt(pix[1]*pix[1] + pix[2]*pix[2]);
-        float saturation_contracted = compress_value(saturation_expanded / highest_saturation, 1.0) * highest_saturation;
-        pix[1] *= pix[0] * (saturation_contracted/saturation_expanded);
-        pix[2] *= pix[0] * (saturation_contracted/saturation_expanded);
+        if (saturation_before >= 0.00001)
+        {
+            pix[1] /= pix[0];
+            pix[2] /= pix[0];
+            float saturation_expanded = sqrt(pix[1]*pix[1] + pix[2]*pix[2]);
+            float saturation_contracted = compress_value(saturation_expanded / highest_saturation, 1.0) * highest_saturation;
+            pix[1] *= pix[0] * (saturation_contracted/saturation_expanded);
+            pix[2] *= pix[0] * (saturation_contracted/saturation_expanded);
+        }
 
 
         IPT_to_XYZ(pix, pix, 1);
@@ -328,7 +341,7 @@ float compress_value(float x, float power)
 float uncompress_value(float x, float power)
 {
     if (x >= 1.0) return INFINITY;
-    if (x < 0) return x;
+    if (x <= 0.0) return x;
     return powf(uncompress(pow(x, 1.0f/power)), power);
 }
 
